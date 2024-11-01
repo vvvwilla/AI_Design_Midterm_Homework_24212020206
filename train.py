@@ -29,18 +29,16 @@ from torch.distributed import init_process_group, destroy_process_group
 
 from model import GPTConfig, GPT
 
-from tokenizer_utils import EnhancedTokenizer   #引入增强的tokenizer
+from tokenizer_utils import EnhancedTokenizer   
 
-# 在文件开头添加必要的库
 import matplotlib.pyplot as plt
 from datetime import datetime
 import time
 
-# 添加新的全局变量
 val_losses = []
 train_losses = []
 steps = []
-generation_samples = 5  # 用于测试的样本数量
+generation_samples = 5  
 
 # -----------------------------------------------------------------------------
 # default config values designed to train a gpt2 (124M) on OpenWebText
@@ -68,9 +66,9 @@ n_embd = 512
 dropout = 0.2  # for pretraining 0 is good, for finetuning try 0.1+
 bias = False  # do we use bias inside LayerNorm and Linear layers?
 # adamw optimizer
-learning_rate = 6e-4  # 修改学习率
+learning_rate = 6e-4  
 max_iters = 600000  # total number of training iterations
-weight_decay = 2e-1   #增加权重衰减
+weight_decay = 2e-1   
 beta1 = 0.9
 beta2 = 0.999
 grad_clip = 1.0  # clip gradients at this value, or disable if == 0.0
@@ -244,18 +242,17 @@ def estimate_loss():
             losses[k] = loss.item()
         out[split] = losses.mean()
 
-        # 记录损失值
+     
         if split == 'val':
             val_losses.append(out[split])
         else:
             train_losses.append(out[split])
-    steps.append(iter_num)  # 记录当前步数
+    steps.append(iter_num) 
 
     model.train()
     return out
 
 
-# 修改评估函数
 def evaluate_model_performance():
 
     if len(steps) > 0 and len(val_losses) > 0:
@@ -275,7 +272,7 @@ def evaluate_model_performance():
 
 # learning rate decay scheduler (cosine with warmup)
 def get_lr(it):
-    #更平缓的预热
+
     if it < warmup_iters:
         return learning_rate *  (it / warmup_iters) ** 2
     # 2) if it > lr_decay_iters, return min learning rate
@@ -312,7 +309,6 @@ while True:
         losses = estimate_loss()
         print(f"step {iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
 
-        # 在这里调用评估函数
         evaluate_model_performance()
 
         if wandb_log:
@@ -384,7 +380,6 @@ while True:
     if iter_num > max_iters:
         break
 
-    # 评估性能
     if master_process:
         evaluate_model_performance()
 
