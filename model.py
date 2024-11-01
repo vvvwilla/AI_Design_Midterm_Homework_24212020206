@@ -51,21 +51,17 @@ class CausalSelfAttention(nn.Module):
             self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size))
                                         .view(1, 1, config.block_size, config.block_size))
 
-        # 添加相对位置编码
         self.max_positions = config.block_size
         self.pos_emb = nn.Parameter(torch.zeros(1, self.max_positions, config.n_embd))
         
-        # 添加注意力温度参数
         self.attention_scale = nn.Parameter(torch.ones(1) * 0.125)
         
-        # 添加门控机制
         self.gate = nn.Linear(config.n_embd, config.n_embd)
         self.gate_activation = nn.Sigmoid()
 
     def forward(self, x):
         B, T, C = x.size() # batch size, sequence length, embedding dimensionality (n_embd)
 
-        # 添加相对位置信息
         pos_emb = self.pos_emb[:, :T, :]
         x = x + pos_emb
 
@@ -75,7 +71,6 @@ class CausalSelfAttention(nn.Module):
         q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
         v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
 
-        # 使用可学习的温度参数
         att = (q @ k.transpose(-2, -1)) * self.attention_scale
 
         # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
@@ -94,7 +89,6 @@ class CausalSelfAttention(nn.Module):
         # output projection
         y = self.resid_dropout(self.c_proj(y))
 
-        # 添加门控机制
         gate = self.gate_activation(self.gate(y))
         y = y * gate
 
@@ -103,42 +97,36 @@ class CausalSelfAttention(nn.Module):
 class MLP(nn.Module):
     def __init__(self, config):
         super().__init__()
-        # 使用适中的放大因子，在模型容量和过拟合之间平衡
+
         hidden_dim = int(1.2 * config.n_embd)
         
-        self.c_fc1   = nn.Linear(config.n_embd, hidden_dim, bias=False)  # 移除偏置项减少过拟合
+        self.c_fc1   = nn.Linear(config.n_embd, hidden_dim, bias=False) 
         self.c_fc2   = nn.Linear(hidden_dim, config.n_embd, bias=False)
         
-        # 使用适中的dropout
-        self.dropout1 = nn.Dropout(0.2)  # 训练时足够的正则化
-        self.dropout2 = nn.Dropout(0.15) # 第二层略小的dropout保留更多信息
-        
-        # 使用GELU和ReLU的组合
+        self.dropout1 = nn.Dropout(0.2)  
+        self.dropout2 = nn.Dropout(0.15) 
+
         self.gelu = nn.GELU()
         self.relu = nn.ReLU()
         
         self.ln1 = LayerNorm(hidden_dim, bias=False)
         self.ln2 = LayerNorm(config.n_embd, bias=False)
-        
-        # 可学习的残差连接权重
+
         self.res_weight = nn.Parameter(torch.ones(1) * 0.8)
 
     def forward(self, x):
         residual = x
-        
-        # 第一个转换块
+
         x = self.c_fc1(x)
         x = self.ln1(x)
-        x = self.gelu(x)  # GELU提供更好的语言建模能力
+        x = self.gelu(x)  
         x = self.dropout1(x)
-        
-        # 第二个转换块
+   
         x = self.c_fc2(x)
         x = self.ln2(x)
-        x = self.relu(x)  # ReLU提供更稳定的梯度
+        x = self.relu(x)  
         x = self.dropout2(x)
-        
-        # 带权重的残差连接
+
         x = self.res_weight * x + (1 - self.res_weight) * residual
         return x
 
@@ -149,29 +137,25 @@ class Block(nn.Module):
         self.attn = CausalSelfAttention(config)
         self.ln_2 = LayerNorm(config.n_embd, bias=False)
         self.mlp = MLP(config)
-        
-        # 添加残差连接的缩放因子
+
         self.res_scale = nn.Parameter(torch.ones(1) * 0.8)
-        
-        # 创建增强的tokenizer
+
         self.tokenizer = EnhancedTokenizer()
         
     def forward(self, x):
-        # 缩放残差连接
         x = x + self.res_scale * self.attn(self.ln_1(x))
         x = x + self.res_scale * self.mlp(self.ln_2(x))
         return x
 
 @dataclass
 class GPTConfig:
-    # 修改config参数
-    block_size: int = 1024  # 保持不变
-    vocab_size: int = 50304  # 保持不变
-    n_layer: int = 16  # 增加from 12 to 16
-    n_head: int = 16  # 增加from 12 to 16
-    n_embd: int = 1024  # 增加from 768 to 1024
-    dropout: float = 0.1  # 增加from 0.0 to 0.1
-    bias: bool = True  # 保持不变
+    block_size: int = 1024  
+    vocab_size: int = 50304  
+    n_layer: int = 16  
+    n_head: int = 16  
+    n_embd: int = 1024  
+    dropout: float = 0.1  
+    bias: bool = True  
 
 class GPT(nn.Module):
 
@@ -373,20 +357,16 @@ class GPT(nn.Module):
         """
         
         for _ in range(max_new_tokens):
-            # 如果序列太长则裁剪到block_size
             idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
-            
-            # 前向传播得到logits
+
             logits, _ = self(idx_cond)
             logits = logits[:, -1, :] / temperature
         
         
-            # top-k采样
             if top_k is not None:
                 v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
                 logits[logits < v[:, [-1]]] = float('-inf')
             
-            # top-p (nucleus) 采样
             if top_p is not None:
                 sorted_logits, sorted_indices = torch.sort(logits, descending=True)
                 cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
@@ -395,14 +375,11 @@ class GPT(nn.Module):
                 sorted_indices_to_remove[..., 0] = 0
                 indices_to_remove = sorted_indices_to_remove.scatter(1, sorted_indices, sorted_indices_to_remove)
                 logits[indices_to_remove] = float('-inf')
-            
-            # 转换为概率分布
+
             probs = F.softmax(logits, dim=-1)
-        
-            # 采样下一个token
+
             idx_next = torch.multinomial(probs, num_samples=1)
-            
-            # 将新生成的token添加到序列中
+
             idx = torch.cat((idx, idx_next), dim=1)
 
         return idx
