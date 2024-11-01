@@ -2,6 +2,7 @@
 Sample from a trained model
 """
 import os
+import re
 import pickle
 from contextlib import nullcontext
 import torch
@@ -16,6 +17,7 @@ num_samples = 10 # number of samples to draw
 max_new_tokens = 500 # number of tokens generated in each sample
 temperature = 0.8 # 1.0 = no change, < 1.0 = less random, > 1.0 = more random, in predictions
 top_k = 200 # retain only the top_k most likely tokens, clamp others to have 0 probability
+top_p = 0.92 #设置top_p
 seed = 1337
 temperature = 0.7  # 降低温度可以使输出更加保守和连贯
 device = 'cuda' # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1', etc.
@@ -31,6 +33,48 @@ torch.backends.cudnn.allow_tf32 = True # allow tf32 on cudnn
 device_type = 'cuda' if 'cuda' in device else 'cpu' # for later use in torch.autocast
 ptdtype = {'float32': torch.float32, 'bfloat16': torch.bfloat16, 'float16': torch.float16}[dtype]
 ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(device_type=device_type, dtype=ptdtype)
+
+def post_process_text(text):
+    """对生成的文本进行后处理"""
+    # 修复常见的标点符号错误
+    text = fix_punctuation(text)
+    
+    # 删除重复的句子
+    text = remove_duplicates(text)
+    
+    # 确保句子完整性
+    text = ensure_complete_sentences(text)
+    
+    return text
+
+def fix_punctuation(text):
+    """修复标点符号"""
+    # 添加缺失的句号
+    text = re.sub(r'([.!?])\s*([A-Z])', r'\1 \2', text)
+    
+    return text
+
+def remove_duplicates(text):
+    """删除重复的句子"""
+    sentences = text.split('.')
+    unique_sentences = []
+    seen = set()
+    
+    for sent in sentences:
+        sent = sent.strip()
+        if sent and sent not in seen:
+            seen.add(sent)
+            unique_sentences.append(sent)
+            
+    return '. '.join(unique_sentences)
+
+def ensure_complete_sentences(text):
+    """确保句子完整性"""
+    # 如果最后一个句子不完整,则删除
+    if not text.rstrip().endswith(('.', '!', '?')):
+        text = '. '.join(text.split('.')[:-1]) + '.'
+    
+    return text
 
 # model
 if init_from == 'resume':
@@ -81,10 +125,15 @@ if start.startswith('FILE:'):
 start_ids = encode(start)
 x = (torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...])
 
-# run generation
+# 在生成时使用后处理
 with torch.no_grad():
     with ctx:
         for k in range(num_samples):
-            y = model.generate(x, max_new_tokens, temperature=temperature, top_k=top_k)
-            print(decode(y[0].tolist()))
+            y = model.generate(x, max_new_tokens, 
+                             temperature=temperature,
+                             top_k=top_k,
+                             top_p=top_p)
+            generated_text = decode(y[0].tolist())
+            processed_text = post_process_text(generated_text)
+            print(processed_text)
             print('---------------')
