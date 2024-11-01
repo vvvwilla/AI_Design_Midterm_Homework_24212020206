@@ -19,7 +19,7 @@ temperature = 0.8 # 1.0 = no change, < 1.0 = less random, > 1.0 = more random, i
 top_k = 200 # retain only the top_k most likely tokens, clamp others to have 0 probability
 top_p = 0.92 #设置top_p
 seed = 1337
-temperature = 0.7  # 降低温度可以使输出更加保守和连贯
+temperature = 0.7
 device = 'cuda' # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1', etc.
 dtype = 'bfloat16' if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else 'float16' # 'float32' or 'bfloat16' or 'float16'
 compile = False # use PyTorch 2.0 to compile the model to be faster
@@ -35,27 +35,22 @@ ptdtype = {'float32': torch.float32, 'bfloat16': torch.bfloat16, 'float16': torc
 ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(device_type=device_type, dtype=ptdtype)
 
 def post_process_text(text):
-    """对生成的文本进行后处理"""
-    # 修复常见的标点符号错误
+
     text = fix_punctuation(text)
-    
-    # 删除重复的句子
+
     text = remove_duplicates(text)
-    
-    # 确保句子完整性
+
     text = ensure_complete_sentences(text)
     
     return text
 
 def fix_punctuation(text):
-    """修复标点符号"""
-    # 添加缺失的句号
+
     text = re.sub(r'([.!?])\s*([A-Z])', r'\1 \2', text)
     
     return text
 
 def remove_duplicates(text):
-    """删除重复的句子"""
     sentences = text.split('.')
     unique_sentences = []
     seen = set()
@@ -69,8 +64,7 @@ def remove_duplicates(text):
     return '. '.join(unique_sentences)
 
 def ensure_complete_sentences(text):
-    """确保句子完整性"""
-    # 如果最后一个句子不完整,则删除
+
     if not text.rstrip().endswith(('.', '!', '?')):
         text = '. '.join(text.split('.')[:-1]) + '.'
     
@@ -125,7 +119,6 @@ if start.startswith('FILE:'):
 start_ids = encode(start)
 x = (torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...])
 
-# 在生成时使用后处理
 with torch.no_grad():
     with ctx:
         for k in range(num_samples):
