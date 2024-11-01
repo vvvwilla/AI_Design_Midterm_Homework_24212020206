@@ -5,8 +5,28 @@ and the reproduction results were good. The reproduction diagram is shown in the
 
 Then we optimize the training set and write our own training model, as follows:
 
+Enhance the four modules: model.py, train.py, sample.py, and config/token_char.py.
+
+(1) Introduced the EnhancedTokenizer class, incorporating special tokens (such as , , ) to facilitate more intricate text processing, offering enhanced encoding and decoding functionalities that support the handling of special tokens.
+
+(2) Incorporated relative position encoding, attention temperature parameters, and a gating mechanism into the CausalSelfAttention class to bolster the model's attention mechanism.
+
+(3) Employed a combined activation function of GELU and ReLU in the MLP class, and introduced learnable residual connection weights.
+
+(4) Added a scaling factor for residual connections in the Block class.
+
+(5) Integrated Matplotlib into train.py to chart training and validation losses, enabling better monitoring of the training process, and modified the learning rate scheduler to facilitate a smoother warm-up phase.
+
+(6) In GPTConfig, altered the number of layers, heads, and embedding dimensions, and incorporated dropout to enhance the model's capacity and regularization capabilities.
+
+(7) Included top-k and top-p sampling strategies in the generate method of the GPT class to facilitate more versatile text generation.
+
+
 Finally, we used our own training set and the test results are as follows:
 
+![](https://github.com/vvvwilla/AI_Design_Midterm_Homework_24212020206/blob/9771947ea0fb4bdd680cd6b1ff393e4484fe0dd8/picture/Training%20Progress.jpg)
+
+The text is displayed as follows：
 
 ```
 "IN the big of his own when she said her being of yourself.  And you wouldn't like to want to the same.  "
@@ -63,3 +83,5 @@ first of him, and the children of course.  "
 the face.  It's the widow here for a big as a break for the road, and they
 want to be many to her find the first.”
 ```
+
+Our model still has certain shortcomings in data processing and response speed, and we will continue to optimize and enhance our training capabilities.
