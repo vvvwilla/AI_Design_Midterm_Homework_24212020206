@@ -1,7 +1,8 @@
 Firstly, we reproduced the Shakespeare training set using Course2's nanoGPT model, using the computer's built-in CPU, 
 and the reproduction results were good. The reproduction diagram is shown in the following figure:
 
-![nanoGPT](picture/Reproduce results.jpg)
+![nanoGPT]([picture/Reproduce results.jpg](https://github.com/vvvwilla/AI_Design_Midterm_Homework_24212020206/blob/61aea278e74b50427bac33794ced0f0000a19015/picture/Reproduce%20results.jpg))
+
 Then we optimize the training set and write our own training model, as follows:
 
 Finally, we used our own training set and the test results are as follows:
